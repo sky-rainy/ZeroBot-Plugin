@@ -3,15 +3,15 @@ package epidemic
 
 import (
 	"encoding/json"
-	"strconv"
 
-	control "github.com/FloatTech/zbputils/control"
-	"github.com/FloatTech/zbputils/control/order"
-	"github.com/FloatTech/zbputils/process"
-	"github.com/FloatTech/zbputils/web"
-	log "github.com/sirupsen/logrus"
 	zero "github.com/wdvxdr1123/ZeroBot"
 	"github.com/wdvxdr1123/ZeroBot/message"
+
+	"github.com/FloatTech/zbputils/binary"
+	"github.com/FloatTech/zbputils/control"
+	"github.com/FloatTech/zbputils/control/order"
+	"github.com/FloatTech/zbputils/ctxext"
+	"github.com/FloatTech/zbputils/web"
 )
 
 const (
@@ -21,7 +21,6 @@ const (
 
 // result 疫情查询结果
 type result struct {
-	Ret  int    `json:"ret"`
 	Data string `json:"data"`
 }
 
@@ -49,34 +48,36 @@ type area struct {
 
 func init() {
 	engine := control.Register(servicename, order.AcquirePrio(), &control.Options{
-		DisableOnDefault: true,
-		Help: "本插件用于查询城市疫情状况\n" +
-			"使用方法列如： 北京疫情  \n",
+		DisableOnDefault: false,
+		Help: "城市疫情查询\n" +
+			"- xxx疫情\n",
 	})
-	engine.OnSuffix("疫情").SetBlock(true).
+	engine.OnSuffix("疫情").SetBlock(true).Limit(ctxext.LimitByUser).
 		Handle(func(ctx *zero.Ctx) {
-			text := ctx.State["args"].(string)
-			if text == "" {
+			city := ctx.State["args"].(string)
+			if city == "" {
 				ctx.SendChain(message.Text("你还没有输入城市名字呢！"))
 				return
 			}
-			process.SleepAbout1sTo2s()
-			data, times := queryEpidemic(text)
-			if data == nil {
-				ctx.SendChain(message.Text("没有找到【" + text + "】城市的疫情数据."))
+			data, time, err := queryEpidemic(city)
+			if err != nil {
+				ctx.SendChain(message.Text("ERROR: ", err))
 				return
 			}
-			msgtext := "【" + data.Name + "】疫情数据:\n" +
-				"新增：" + strconv.Itoa(data.Today.Confirm) +
-				" ,现有确诊：" + strconv.Itoa(data.Total.NowConfirm) +
-				" ,治愈：" + strconv.Itoa(data.Total.Heal) +
-				" ,死亡：" + strconv.Itoa(data.Total.Dead) + " " + data.Total.Grade
+			if data == nil {
+				ctx.SendChain(message.Text("没有找到【", city, "】城市的疫情数据."))
+				return
+			}
 			ctx.SendChain(
-				message.Text(msgtext),
-				message.Text("\n"),
-				message.Text("更新时间："+times),
-				message.Text("\n"),
-				message.Text("温馨提示：请大家做好防疫工作，出门带好口罩！"),
+				message.Text(
+					"【", data.Name, "】疫情数据\n",
+					"新增：", data.Today.Confirm, " ,",
+					"现有确诊：", data.Total.NowConfirm, " ,",
+					"治愈：", data.Total.Heal, " ,",
+					"死亡：", data.Total.Dead, " ", data.Total.Grade, "\n",
+					"更新时间：", time, "\n",
+					"温馨提示：请大家做好防疫工作，出门带好口罩！",
+				),
 			)
 		})
 }
@@ -102,24 +103,21 @@ func rcity(a *area, cityName string) *area {
 }
 
 // queryEpidemic 查询城市疫情
-func queryEpidemic(findCityName string) (citydata *area, times string) {
-	response, err := web.GetData(txurl)
+func queryEpidemic(findCityName string) (citydata *area, times string, err error) {
+	data, err := web.GetData(txurl)
 	if err != nil {
-		log.Errorln("[txurl-err]:", err)
-		return nil, ""
+		return
 	}
 	var r result
-	err = json.Unmarshal(response, &r)
+	err = json.Unmarshal(data, &r)
 	if err != nil {
-		log.Errorln("[txjson-Result-err]:", err)
-		return nil, ""
+		return
 	}
 	var e epidemic
-	err = json.Unmarshal([]byte(r.Data), &e)
+	err = json.Unmarshal(binary.StringToBytes(r.Data), &e)
 	if err != nil {
-		log.Errorln("[txjson-Epidemic-err]:", err)
-		return nil, ""
+		return
 	}
 	citydata = rcity(e.AreaTree[0], findCityName)
-	return citydata, e.LastUpdateTime
+	return citydata, e.LastUpdateTime, nil
 }

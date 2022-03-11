@@ -250,7 +250,6 @@ print("run[CQ:image,file="+j["img"]+"]")
 - **bilibili** `import _ "github.com/FloatTech/ZeroBot-Plugin/plugin/bilibili"`
     - [x] >vup info [名字 | uid]
     - [x] >user info [名字 | uid]
-    - [x] /开启粉丝日报
 - **嘉然** `import _ "github.com/FloatTech/ZeroBot-Plugin/plugin/diana"`
     - [x] 小作文
     - [x] 发大病
@@ -346,6 +345,8 @@ print("run[CQ:image,file="+j["img"]+"]")
     - [x] galCG[xxx]
     - [x] gal表情包[xxx]
     - [x] 更新gal
+- **城市疫情查询** `import _ "github.com/FloatTech/ZeroBot-Plugin/plugin/epidemic"`
+    - [x] xxx疫情
 - **TODO...**
 
 ## 使用方法
