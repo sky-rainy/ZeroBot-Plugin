@@ -27,7 +27,7 @@ type result struct {
 
 // epidemic 疫情数据
 type epidemic struct {
-	LastUpdateTime string `json:"lastUpdateTime"`
+	LastUpdateTime string  `json:"lastUpdateTime"`
 	AreaTree       []*area `json:"areaTree"`
 }
 
@@ -120,6 +120,6 @@ func queryEpidemic(findCityName string) (citydata *area, times string) {
 		log.Errorln("[txjson-Epidemic-err]:", err)
 		return nil, ""
 	}
-	citydata = rcity(&e.AreaTree[0], findCityName)
+	citydata = rcity(e.AreaTree[0], findCityName)
 	return citydata, e.LastUpdateTime
 }
